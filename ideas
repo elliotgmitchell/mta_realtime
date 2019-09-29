@@ -1,0 +1,14 @@
+# Ideas
+
+A person can have a favorite station (and direction) and/or lines
+
+When is the next train? The one after? Uptown? Downtown? The next C? The next B?
+
+Parse the alerts ; night time, weekend, non-planned work alerts
+--> some alerts may just be benign and there for a long time; maybe like a mailbox concept?
+
+Cache a running history of train times to see how trains are running relative to their scheduled time, how far apart they are
+
+Text a summary each morning around commute time
+
+Alexa Skill/Text message skill
