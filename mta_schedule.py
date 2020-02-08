@@ -29,7 +29,7 @@ import pandas as pd
 from datetime import datetime
 from google.transit import gtfs_realtime_pb2
 
-from mta_gtfs_helpers import get_stop_name
+from mta_gtfs_helpers import get_stop_name, match_full_trip_id
 
 # get API key fron env vars
 MTA_KEY = os.getenv("MTA_API_KEY")
@@ -39,6 +39,7 @@ FEED_ID = "26" #ACE
 # FEED_ID = "21" #BDFM
 
 stop_id = "A17N"
+# stop_id = "A17S"
 # stop_id = "A12N" # 145th st on the AC line
 # stop_id = "D13N" # 145th st on the BD line
 # Interesting note: transfers.txt incorporates this time distance
@@ -49,8 +50,11 @@ stop_id = "A17N"
 
 ### Call the API
 mtafeed = gtfs_realtime_pb2.FeedMessage()
-response = requests.get('http://datamine.mta.info/mta_esi.php?key=' + MTA_KEY + '&feed_id=' + FEED_ID)
+url = 'http://datamine.mta.info/mta_esi.php?key=' + MTA_KEY + '&feed_id=' + FEED_ID
+# print(url)
+response = requests.get(url)
 # response = requests.get('http://datamine.mta.info/mta_esi.php?key=' + MTA_KEY)
+# print(response.content)
 mtafeed.ParseFromString(response.content)
 
 def human_time(timestamp):
@@ -122,13 +126,13 @@ for entity in mtafeed.entity:
             # print(update)
             # print(entity.trip_update.trip.trip_id)
             # print(update.arrival.time)
-            time = update.arrival.time
-            if time <= 0:
-                time = update.departure.time
-            time = datetime.fromtimestamp(time)
+            arrival_time = update.arrival.time
+            if arrival_time <= 0:
+                arrival_time = update.departure.time
+            arrival_time = datetime.fromtimestamp(arrival_time)
             # arrival_minutes = math.trunc(((time - current_time).total_seconds()) / 60)
-            arrival_minutes = math.trunc(((time - current_time).total_seconds()) / 60)
-            arrival_minutes_seconds = math.trunc(((time - current_time).total_seconds()) % 60)
+            arrival_minutes = math.trunc(((arrival_time - current_time).total_seconds()) / 60)
+            arrival_minutes_seconds = math.trunc(((arrival_time - current_time).total_seconds()) % 60)
             # print(time)
             # print(arrival_minutes)
             # print(arrival_minutes_seconds)
@@ -138,16 +142,24 @@ for entity in mtafeed.entity:
                 realtime_guess = False
             else: realtime_guess = True
 
+            trip_id = entity.trip_update.trip.trip_id
+            try:
+                full_trip_id = match_full_trip_id(trip_id)
+            except Exception as e:
+                full_trip_id = "UNABLE_TO_MATCH"
+
+
             # print("Trip {trip_id} will arrive at stop {stop_id} in {arrival_minutes} min and {arrival_minutes_seconds} seconds".format(
             print("Trip {trip_id} will arrive at {stop_name} at {eta} ({arrival_minutes} min and {arrival_minutes_seconds} seconds) - realtime:{realtime_guess}".format(
-                trip_id=entity.trip_update.trip.trip_id,
+                trip_id=trip_id,
                 stop_name=stop_name,
                 arrival_minutes=arrival_minutes,
                 arrival_minutes_seconds=arrival_minutes_seconds,
-                eta=time,
+                eta=arrival_time.strftime("%Y-%m-%d %H:%M:%S %p"),
                 raw_time=update.arrival.time,
                 realtime_guess=realtime_guess
             ))
+            print("\tI think this is a part of trip {full_trip_id}".format(full_trip_id=full_trip_id))
 
 
 
